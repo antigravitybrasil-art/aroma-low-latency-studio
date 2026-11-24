@@ -18,6 +18,11 @@ public:
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
 
+    // Estado para o editor: taxa do host e se o kit carregou (e por quê não).
+    double hostSampleRate() const { return hostSampleRate_; }
+    bool kitLoaded() const { return kitLoaded_; }
+    std::string kitError() const { return kitError_; }
+
     const juce::String getName() const override { return "Aroma Low Latency Studio"; }
     bool acceptsMidi() const override { return true; }
     bool producesMidi() const override { return false; }
@@ -36,4 +41,6 @@ public:
 private:
     aroma::DrumEngine engine_;
     bool kitLoaded_ = false;
+    double hostSampleRate_ = 48000.0;
+    std::string kitError_;
 };
