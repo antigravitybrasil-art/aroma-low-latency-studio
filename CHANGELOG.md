@@ -4,6 +4,10 @@ Formato: `## [versão] — data — etapa`.
 
 ## [0.5.0] — 2026-11-23 — Fase B: interface premium em JUCE (código pronto; EXE pendente)
 
+### Corrigido (2026-11-24, antes da release v0.5.0)
+- **Áudio do AromaStudio não abria ("Áudio: fechado")**: `AudioStream::open()` chamava `CoInitializeEx(COINIT_MULTITHREADED)` na thread de mensagens, onde o JUCE já inicializou COM como STA — a chamada falhava com `RPC_E_CHANGED_MODE` e o `open()` retornava "CoInitializeEx falhou" em TODA tentativa (Iniciar/Reiniciar áudio). O standalone (sem JUCE) nunca teve o problema. Fix: `ComInit` aceita `RPC_E_CHANGED_MODE` (usa o modo já ativo) e só chama `CoUninitialize` no `close()` quando fomos nós que inicializamos o COM. Validado por build Zig do standalone + testes unitários; validação final no PC do Allex (build na nuvem).
+- **O motivo real do erro sumia da tela**: o timer da `MainComponent` reescrevia o rótulo de áudio a cada 100 ms com "Áudio: fechado", apagando o erro do `openAudio()`. Agora o último erro é guardado (`audioError_`) e a barra mostra "Áudio: fechado — <motivo>".
+
 ### Adicionado
 - **AromaStudio — novo app JUCE** (`src/app-juce/`, JUCE 8.0.10 sob
   GPLv3, decisão do Allex de 23/11/2026): `Main.cpp`
