@@ -255,3 +255,9 @@ compilar o AromaStudio (`docs/BUILD_JUCE_ZIG.md` tem os comandos —
 edição ao vivo, upload de sample, novo/salvar/carregar/duplicar kit.
 O `AromaStandalone.exe` do ZIP continua sendo o fallback que funciona
 hoje.
+
+### 11.1 Build na nuvem (GitHub Actions, MSVC) + bug de áudio do JUCE — 2026-11-24
+
+- Repo público `antigravitybrasil-art/aroma-low-latency-studio`, build `.github/workflows/build-windows.yml` (JUCE via FetchContent, CRT estático). Run 45316281323: Build ✅, testes ✅, **Stage deliverable ❌** — o EXE caía em `build/Release/Release/` (o MSVC anexa a subpasta da config ao `RUNTIME_OUTPUT_DIRECTORY` sem `$<CONFIG>`). Fix nos 3 CMakeLists (`"${CMAKE_BINARY_DIR}/$<CONFIG>"`).
+- Run 45322074081 (com o fix): Build ✅, testes ✅, Stage ✅, Upload do artefato `AromaStudio-windows` ✅, **Publish release ❌** — `gh release create v0.5.0` falhou sem erro visível e nenhuma release foi criada. Fix: passo de release trocado para `softprops/action-gh-release@v2` (pendente o Allex colar o workflow corrigido no site; o artefato já baixa o EXE).
+- **Bug de áudio no AromaStudio (reportado pelo Allex 24/11 05:36)**: kit carregado, foto visível, peça acende ao clicar — mas nenhum som, e o botão "Iniciar áudio" nunca inicia ("Áudio: fechado"). Causa: `CoInitializeEx(COINIT_MULTITHREADED)` falha com `RPC_E_CHANGED_MODE` na thread de mensagens do JUCE (COM já inicializado como STA por ele). Fix em `src/standalone/AudioStream.cpp` (`ComInit` aceita o modo já ativo; `CoUninitialize` só no `close()` se fomos nós que inicializamos) + `MainComponent` passa a mostrar o motivo real na barra ("Áudio: fechado — <motivo>") em vez de apagá-lo a cada 100 ms. Build Zig do standalone OK, testes unitários 144/144. Validação final: próximo build na nuvem + teste do Allex no PC.
