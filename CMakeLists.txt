@@ -87,9 +87,12 @@ if(WIN32 AND AROMA_BUILD_DIAGNOSTIC)
         target_compile_options(AromaDiagnostico PRIVATE -municode)
         target_link_options(AromaDiagnostico PRIVATE -municode)
     endif()
+    # $<CONFIG>: sem ele, o gerador multi-config do MSVC anexa a
+    # subpasta da config e o EXE ia para build/Release/Release/
+    # (foi o que quebrou o passo "Stage deliverable" do build na nuvem).
     set_target_properties(AromaDiagnostico PROPERTIES
         OUTPUT_NAME "AromaDiagnostico"
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Release"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>"
     )
 endif()
 
