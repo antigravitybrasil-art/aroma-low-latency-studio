@@ -22,14 +22,28 @@ namespace aroma {
 namespace {
 
 struct ComInit {
-    ComInit() { hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED); }
+    ComInit() {
+        hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        if (hr == RPC_E_CHANGED_MODE) {
+            // COM já inicializado nesta thread noutro modo — é o caso
+            // do AromaStudio: o JUCE inicializa COM como STA na thread
+            // de mensagens, e pedir MTA devolve RPC_E_CHANGED_MODE.
+            // Sem este tratamento, open() falhava sempre ("CoInitializeEx
+            // falhou") e o app ficava em "Áudio: fechado" para sempre,
+            // mesmo com o standalone (sem JUCE) funcionando no mesmo PC.
+            // Usa o modo já ativo e NÃO desfaz no destructor/close().
+            hr = S_OK;
+            alreadyInit = true;
+        }
+    }
     // Por padrão o destructor desfaz o CoInitialize (caminhos de erro).
     // No caminho de sucesso, open() chama detach(): o cliente WASAPI
     // vive além desta função e o CoUninitialize fica para o close().
-    ~ComInit() { if (SUCCEEDED(hr) && !detached) CoUninitialize(); }
+    ~ComInit() { if (SUCCEEDED(hr) && !detached && !alreadyInit) CoUninitialize(); }
     void detach() { detached = true; }
     HRESULT hr = E_FAIL;
     bool detached = false;
+    bool alreadyInit = false; // COM já era desta thread; não é nosso p/ desfazer
 };
 
 template <typename T>
@@ -348,9 +362,10 @@ bool AudioStream::open(int preferredFrames, std::string& error) {
 
     // O COM fica inicializado enquanto o cliente viver: o loop de áudio
     // (outra thread) chama métodos do IAudioClient. O CoUninitialize
-    // correspondente é feito no close().
+    // correspondente é feito no close() — mas SÓ se fomos nós que
+    // inicializamos (se o JUCE já tinha COM como STA, não desfazemos).
     com.detach();
-    comInit_ = true;
+    comInit_ = !com.alreadyInit;
     lastError_.clear();
     return true;
 }
