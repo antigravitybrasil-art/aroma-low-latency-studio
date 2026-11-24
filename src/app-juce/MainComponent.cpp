@@ -124,6 +124,7 @@ void MainComponent::openMidi() {
 void MainComponent::openAudio() {
     std::string err;
     if (!stream_.open(256, err)) {
+        audioError_ = err;
         statusBar_.setAudioInfo(juce::String(juce::CharPointer_UTF8("Áudio: ")) +
                                 juce::String(err));
         audioOn_ = false;
@@ -131,6 +132,7 @@ void MainComponent::openAudio() {
         return;
     }
     if (!stream_.start(model_.engine())) {
+        audioError_ = stream_.lastError();
         statusBar_.setAudioInfo(juce::String(juce::CharPointer_UTF8("Áudio: ")) +
                                 juce::String(stream_.lastError()));
         stream_.close();
@@ -138,6 +140,7 @@ void MainComponent::openAudio() {
         statusBar_.setAudioRunning(false);
         return;
     }
+    audioError_.clear();
     audioOn_ = true;
     invalidatedShown_ = false;
     statusBar_.setAudioRunning(true);
@@ -321,8 +324,12 @@ void MainComponent::timerCallback() {
                        "  |  ATENÇÃO: taxa fora de 48 kHz"))
                  : ""));
     } else {
-        statusBar_.setAudioInfo(
-            juce::String(juce::CharPointer_UTF8("Áudio: fechado")));
+        // Mostra o motivo real quando o áudio não abriu, em vez de só
+        // "Áudio: fechado" (era o que escondia o erro de COM do JUCE).
+        juce::String info = juce::String(juce::CharPointer_UTF8("Áudio: fechado"));
+        if (!audioError_.empty())
+            info += " — " + juce::String(audioError_);
+        statusBar_.setAudioInfo(info);
     }
     statusBar_.setCounters(stream_.underruns(), stream_.callbacks(),
                            model_.engine().activeVoices(), model_.noteOnCount());
