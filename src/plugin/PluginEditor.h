@@ -21,6 +21,8 @@ private:
     juce::Slider masterGain_;
     juce::Label voicesLabel_;
     juce::Label kitLabel_;
+    juce::Label statusLabel_; // kit carregou? (e o motivo, se não)
+    juce::Label rateLabel_;   // taxa do projeto + aviso se não for 48 kHz
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AromaEditor)
 };
