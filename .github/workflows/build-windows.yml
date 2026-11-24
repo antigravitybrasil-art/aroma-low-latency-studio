@@ -8,7 +8,8 @@
 #
 # Disparo: push na main ou manual (Actions > Build Windows > Run workflow).
 # Release: v0.5.0 — AromaStudio-v0.5.0-windows.zip (AromaStudio.exe +
-# AromaVST3.vst3 + kits + arte, pronto para rodar) e AromaStudio.exe avulso.
+# "Aroma Low Latency Studio.vst3" + kits + arte, pronto para rodar) e
+# AromaStudio.exe avulso.
 
 name: Build Windows
 
@@ -51,10 +52,12 @@ jobs:
           Copy-Item build/Release/AromaStudio.exe dist/
           Copy-Item build/Release/AromaStandalone.exe dist/ -ErrorAction SilentlyContinue
           Copy-Item build/Release/AromaDiagnostico.exe dist/ -ErrorAction SilentlyContinue
-          # O pacote .vst3 do JUCE fica em <target>_artefacts/Release/VST3/:
-          # procura em vez de adivinhar o caminho, e falha se não existir.
-          $vst3 = Get-ChildItem -Path build -Recurse -Directory -Filter AromaVST3.vst3 | Select-Object -First 1
-          if (-not $vst3) { throw "AromaVST3.vst3 nao encontrado em build/" }
+          # O pacote .vst3 do JUCE fica em <target>_artefacts/Release/VST3/
+          # e o nome dele é o PRODUCT_NAME ("Aroma Low Latency Studio"),
+          # não o nome do target (AromaVST3) — por isso o filtro é *.vst3.
+          # Procura em vez de adivinhar o caminho, e falha se não existir.
+          $vst3 = Get-ChildItem -Path build -Recurse -Directory -Filter *.vst3 | Select-Object -First 1
+          if (-not $vst3) { throw "Nenhum pacote .vst3 encontrado em build/" }
           Copy-Item -Recurse $vst3.FullName dist/
           Copy-Item -Recurse kits dist/
           Copy-Item -Recurse assets dist/
@@ -75,7 +78,7 @@ jobs:
         with:
           tag_name: v0.5.0
           name: "v0.5.0 — AromaStudio (JUCE)"
-          body: "AromaStudio.exe + plugin VST3 (AromaVST3.vst3) compilados na nuvem (MSVC + JUCE 8). ZIP pronto para rodar: EXE + VST3 + kits + arte do kit."
+          body: "AromaStudio.exe + plugin VST3 (Aroma Low Latency Studio.vst3) compilados na nuvem (MSVC + JUCE 8). ZIP pronto para rodar: EXE + VST3 + kits + arte do kit."
           files: |
             AromaStudio-v0.5.0-windows.zip
             build/Release/AromaStudio.exe
