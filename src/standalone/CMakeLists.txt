@@ -20,7 +20,10 @@ if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "GNU"
     target_compile_options(AromaStandalone PRIVATE -municode)
     target_link_options(AromaStandalone PRIVATE -municode)
 endif()
+# $<CONFIG>: sem ele, o gerador multi-config do MSVC anexa a subpasta
+# da config e o EXE ia para build/Release/Release/ (quebrou o "Stage
+# deliverable" do build na nuvem).
 set_target_properties(AromaStandalone PROPERTIES
     OUTPUT_NAME "AromaStandalone"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Release"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>"
 )
