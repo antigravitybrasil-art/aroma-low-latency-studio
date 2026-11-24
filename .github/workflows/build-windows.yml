@@ -1,13 +1,14 @@
 # AROMA LOW LATENCY STUDIO — build na nuvem (GitHub Actions).
 #
-# Compila o AromaStudio (JUCE 8, MSVC) no windows-latest e publica o EXE
-# como artefato e como release público (download sem login).
+# Compila o AromaStudio (JUCE 8, MSVC) e o plugin VST3 (AromaVST3) no
+# windows-latest e publica tudo como artefato e como release público
+# (download sem login).
 # O JUCE vem via FetchContent (baixado do GitHub durante o build).
 # O EXE usa CRT estático: roda sem instalar o VC++ Redist.
 #
 # Disparo: push na main ou manual (Actions > Build Windows > Run workflow).
-# Release: v0.5.0 — AromaStudio-v0.5.0-windows.zip (EXE + kits + arte,
-# pronto para rodar) e AromaStudio.exe avulso.
+# Release: v0.5.0 — AromaStudio-v0.5.0-windows.zip (AromaStudio.exe +
+# AromaVST3.vst3 + kits + arte, pronto para rodar) e AromaStudio.exe avulso.
 
 name: Build Windows
 
@@ -35,7 +36,7 @@ jobs:
         run: $out = [IO.File]::Create("tools/assets-bundle.tar.gz.b64"); Get-ChildItem tools/assets-bundle.tar.gz.b64.part-* | Sort-Object Name | ForEach-Object { $b = [IO.File]::ReadAllBytes($_.FullName); $out.Write($b, 0, $b.Length) }; $out.Close(); certutil -decode tools/assets-bundle.tar.gz.b64 assets-bundle.tar.gz; tar -xzf assets-bundle.tar.gz; Remove-Item assets-bundle.tar.gz
 
       - name: Configure (MSVC + JUCE via FetchContent)
-        run: cmake -S . -B build -DAROMA_BUILD_JUCE_APP=ON
+        run: cmake -S . -B build -DAROMA_BUILD_JUCE_APP=ON -DAROMA_BUILD_VST3=ON
 
       - name: Build Release
         run: cmake --build build --config Release
@@ -50,6 +51,11 @@ jobs:
           Copy-Item build/Release/AromaStudio.exe dist/
           Copy-Item build/Release/AromaStandalone.exe dist/ -ErrorAction SilentlyContinue
           Copy-Item build/Release/AromaDiagnostico.exe dist/ -ErrorAction SilentlyContinue
+          # O pacote .vst3 do JUCE fica em <target>_artefacts/Release/VST3/:
+          # procura em vez de adivinhar o caminho, e falha se não existir.
+          $vst3 = Get-ChildItem -Path build -Recurse -Directory -Filter AromaVST3.vst3 | Select-Object -First 1
+          if (-not $vst3) { throw "AromaVST3.vst3 nao encontrado em build/" }
+          Copy-Item -Recurse $vst3.FullName dist/
           Copy-Item -Recurse kits dist/
           Copy-Item -Recurse assets dist/
           Compress-Archive -Path dist/* -DestinationPath AromaStudio-v0.5.0-windows.zip
@@ -61,8 +67,15 @@ jobs:
           path: dist/
           if-no-files-found: error
 
+      # Publica a release com a action oficial (mais confiável que o
+      # `gh release create`: o comando gh falhou no run 45322074081 sem
+      # deixar erro visível, e a release nunca foi criada).
       - name: Publish release v0.5.0
-        shell: pwsh
-        run: |
-          gh release create v0.5.0 --title "v0.5.0 — AromaStudio (JUCE)" --notes "AromaStudio.exe compilado na nuvem (MSVC + JUCE 8). ZIP pronto para rodar: EXE + kits + arte do kit." AromaStudio-v0.5.0-windows.zip build/Release/AromaStudio.exe 2>$null
-          if ($LASTEXITCODE -ne 0) { gh release upload v0.5.0 AromaStudio-v0.5.0-windows.zip build/Release/AromaStudio.exe --clobber }
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.5.0
+          name: "v0.5.0 — AromaStudio (JUCE)"
+          body: "AromaStudio.exe + plugin VST3 (AromaVST3.vst3) compilados na nuvem (MSVC + JUCE 8). ZIP pronto para rodar: EXE + VST3 + kits + arte do kit."
+          files: |
+            AromaStudio-v0.5.0-windows.zip
+            build/Release/AromaStudio.exe
