@@ -33,7 +33,14 @@ MainComponent::MainComponent() : startTime_(std::chrono::steady_clock::now()) {
     instrumentPanel_.setSampleCallback([this] { onUploadSample(); });
     instrumentPanel_.setParamsCallback(
         [this](const InstrumentParams& p) { model_.updateSelectedParams(p); });
-    addAndMakeVisible(instrumentPanel_);
+    // O painel da peça tem ~350 px de conteúdo e a janela pode ser mais
+    // baixa que isso (notebook 768 px): sem rolagem, os últimos sliders
+    // de EQ ficavam cortados e inalcançáveis. O Viewport rola o painel
+    // (só vertical) quando o espaço não basta.
+    instrumentPanel_.setSize(340, 350);
+    panelViewport_.setViewedComponent(&instrumentPanel_, false);
+    panelViewport_.setScrollBarsShown(true, false);
+    addAndMakeVisible(panelViewport_);
 
     statusBar_.setToggleCallback([this] {
         if (audioOn_) stopAudio();
@@ -348,6 +355,13 @@ void MainComponent::timerCallback() {
         juce::String(juce::CharPointer_UTF8("AROMA STUDIO  —  ")) +
             juce::String(model_.kitName()) + (model_.isDirty() ? "  *" : ""),
         juce::dontSendNotification);
+    // MIDI: se a bateria foi ligada DEPOIS do app abrir, a enumeração
+    // inicial não a viu ("nenhum dispositivo encontrado") e não havia
+    // nova tentativa. Tenta de novo a cada ~2 s até conectar.
+    if (!midi_.isOpen() && ++midiRetryTick_ >= 20) {
+        midiRetryTick_ = 0;
+        openMidi();
+    }
 }
 
 void MainComponent::paint(juce::Graphics& g) {
@@ -361,7 +375,7 @@ void MainComponent::resized() {
     auto right = area.removeFromRight(360);
     kitBrowser_.setBounds(right.removeFromTop(176));
     instrumentList_.setBounds(right.removeFromTop(210));
-    instrumentPanel_.setBounds(right);
+    panelViewport_.setBounds(right);
     kitView_.setBounds(area);
     // Botões da lista de peças: 2 colunas.
     const auto listArea = instrumentList_.getLocalBounds().reduced(8);
