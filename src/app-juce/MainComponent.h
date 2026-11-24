@@ -68,6 +68,8 @@ private:
     // o motivo real sumia e só ficava "Áudio: fechado".
     std::string audioError_;
     uint64_t lastSeenHitTick_ = 0;
+    // Contador do timer (100 ms) para tentar o MIDI de novo a cada ~2 s.
+    int midiRetryTick_ = 0;
     std::chrono::steady_clock::time_point startTime_;
 
     juce::Label headerLabel_;
@@ -77,6 +79,10 @@ private:
     std::vector<std::unique_ptr<juce::TextButton>> instrumentButtons_;
     std::vector<int> instrumentNotes_; // nota de cada botão, na mesma ordem
     InstrumentPanel instrumentPanel_;
+    // Rolagem do painel da peça (o conteúdo tem ~350 px e a janela pode
+    // ser mais baixa que isso — sem isto os últimos sliders de EQ
+    // ficavam cortados e inalcançáveis).
+    juce::Viewport panelViewport_;
     StatusBar statusBar_;
 };
 
