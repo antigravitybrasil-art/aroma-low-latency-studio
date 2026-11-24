@@ -1,0 +1,22 @@
+# name: Demo Kit — Aroma Studio (samples sintetizados, livres)
+# Formato: nome  nota  arquivo  volume  pan  choke_group  gamma
+# Campos opcionais v2 (chave=valor, após o gamma; ausentes = padrão):
+#   tune=0  eq_low=0  eq_mid=0  eq_mid_freq=1000  eq_high=0
+#   soft=<arquivo>  hard=<arquivo>   (camadas por velocity)
+# Mapa MIDI REAL da Aroma TDX-18S, confirmado no diagnóstico de
+# 23/11/2026 (relatórios 18:41 e 18:55, canal 10): os 3 toms são
+# 50/47/43 — NÃO 48/45/41 como dizia a hipótese GM. O aro da caixa é
+# 37 (velocity fixa 78) e o bell do ride é 59 — NÃO 53 (só dispara em
+# batidas fortes, vel 92–106). Mapa completo: 12 notas, todos os pads.
+kick          36  kick.wav          1.00   0.00  none   1.0
+snare         38  snare.wav         0.95   0.00  none   1.2
+rim           37  rim.wav           0.80   0.00  none   1.0
+tom1          50  tom1.wav          0.90  -0.20  none   1.0
+tom2          47  tom2.wav          0.90   0.10  none   1.0
+floor_tom     43  floor_tom.wav     0.95   0.30  none   1.0
+hihat_closed  42  hihat_closed.wav  0.80  -0.15  hihat  1.0
+hihat_open    46  hihat_open.wav    0.80  -0.15  hihat  1.0
+hihat_pedal   44  hihat_pedal.wav   0.70  -0.15  hihat  1.0
+crash         49  crash.wav         0.85   0.25  crash  1.0
+ride          51  ride.wav          0.80   0.35  ride   1.0
+ride_bell     59  ride_bell.wav     0.80   0.35  ride   1.0
