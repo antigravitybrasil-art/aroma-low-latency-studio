@@ -85,7 +85,11 @@ target_link_libraries(AromaStudio PRIVATE
     winmm ole32 uuid avrt gdi32
 )
 
+# $<CONFIG>: sem ele, o gerador multi-config do MSVC anexa a subpasta
+# da config e o EXE ia para build/Release/Release/ (quebrou o "Stage
+# deliverable" do build na nuvem). Esta chamada vem DEPOIS do
+# juce_add_gui_app, então sobrescreve o _artefacts do JUCE.
 set_target_properties(AromaStudio PROPERTIES
     OUTPUT_NAME "AromaStudio"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Release"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>"
 )
