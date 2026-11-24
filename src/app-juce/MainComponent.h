@@ -63,6 +63,10 @@ private:
     std::string kitsDir_;
     bool audioOn_ = false;
     bool invalidatedShown_ = false;
+    // Último erro de abertura do áudio, para a barra de status não
+    // apagá-lo: o timer reescreve o rótulo a cada 100 ms e, sem isto,
+    // o motivo real sumia e só ficava "Áudio: fechado".
+    std::string audioError_;
     uint64_t lastSeenHitTick_ = 0;
     std::chrono::steady_clock::time_point startTime_;
 
