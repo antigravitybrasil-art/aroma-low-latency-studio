@@ -32,7 +32,17 @@ private:
             setContentOwned(new aroma::MainComponent(), true);
             setResizable(true, true);
             setResizeLimits(900, 600, 2560, 1600);
-            centreWithSize(1280, 820);
+            // A janela padrão (1280×820) era mais alta que a tela de um
+            // notebook 1366×768: topo e rodapé ficavam cortados e a
+            // coluna da direita perdia o fim. Limita à área útil da
+            // tela principal (sem a barra de tarefas).
+            const auto* display =
+                juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();
+            const auto workArea = display != nullptr
+                                      ? display->userArea
+                                      : juce::Rectangle<int>(0, 0, 1280, 820);
+            centreWithSize(juce::jmin(1280, workArea.getWidth()),
+                           juce::jmin(820, workArea.getHeight()));
             setVisible(true);
         }
         void closeButtonPressed() override {
