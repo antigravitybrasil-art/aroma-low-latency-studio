@@ -33,7 +33,9 @@ jobs:
       - name: Restore binary assets
         shell: pwsh
         run: |
-          cmd /c copy /b tools\assets-bundle.tar.gz.b64.part-00+tools\assets-bundle.tar.gz.b64.part-01+tools\assets-bundle.tar.gz.b64.part-02+tools\assets-bundle.tar.gz.b64.part-03+tools\assets-bundle.tar.gz.b64.part-04 tools\assets-bundle.tar.gz.b64
+          $out = [IO.File]::Create("tools/assets-bundle.tar.gz.b64")
+Get-ChildItem tools/assets-bundle.tar.gz.b64.part-* | Sort-Object Name | ForEach-Object { $b = [IO.File]::ReadAllBytes($_.FullName); $out.Write($b, 0, $b.Length) }
+$out.Close()part-01+tools\assets-bundle.tar.gz.b64.part-02+tools\assets-bundle.tar.gz.b64.part-03+tools\assets-bundle.tar.gz.b64.part-04 tools\assets-bundle.tar.gz.b64
           certutil -decode tools/assets-bundle.tar.gz.b64 assets-bundle.tar.gz
           tar -xzf assets-bundle.tar.gz
           Remove-Item assets-bundle.tar.gz
