@@ -1,0 +1,9 @@
+builds/
+*.exe
+*.dll
+*.obj
+*.pdb
+*.user
+.vs/
+diagnostico_aroma_*.txt
+diagnostico_aroma_*.csv
