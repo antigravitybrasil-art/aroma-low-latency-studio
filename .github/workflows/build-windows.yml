@@ -26,19 +26,13 @@ jobs:
       - uses: actions/checkout@v4
 
       # Os ativos binários (samples WAV + arte do kit) viajam no repo em
-      # 5 partes base64 (tools/assets-bundle.tar.gz.b64.part-*), porque
+      # 35 partes base64 (tools/assets-bundle.tar.gz.b64.part-*), porque
       # o upload pelo conector só aceita texto e um arquivo único de
       # 3,4 MB não cabe num argumento de comando. Remonta os arquivos
       # exatos que o Allex validou na v0.3.2.
       - name: Restore binary assets
         shell: pwsh
-        run: |
-          $out = [IO.File]::Create("tools/assets-bundle.tar.gz.b64")
-Get-ChildItem tools/assets-bundle.tar.gz.b64.part-* | Sort-Object Name | ForEach-Object { $b = [IO.File]::ReadAllBytes($_.FullName); $out.Write($b, 0, $b.Length) }
-$out.Close()part-01+tools\assets-bundle.tar.gz.b64.part-02+tools\assets-bundle.tar.gz.b64.part-03+tools\assets-bundle.tar.gz.b64.part-04 tools\assets-bundle.tar.gz.b64
-          certutil -decode tools/assets-bundle.tar.gz.b64 assets-bundle.tar.gz
-          tar -xzf assets-bundle.tar.gz
-          Remove-Item assets-bundle.tar.gz
+        run: $out = [IO.File]::Create("tools/assets-bundle.tar.gz.b64"); Get-ChildItem tools/assets-bundle.tar.gz.b64.part-* | Sort-Object Name | ForEach-Object { $b = [IO.File]::ReadAllBytes($_.FullName); $out.Write($b, 0, $b.Length) }; $out.Close(); certutil -decode tools/assets-bundle.tar.gz.b64 assets-bundle.tar.gz; tar -xzf assets-bundle.tar.gz; Remove-Item assets-bundle.tar.gz
 
       - name: Configure (MSVC + JUCE via FetchContent)
         run: cmake -S . -B build -DAROMA_BUILD_JUCE_APP=ON
