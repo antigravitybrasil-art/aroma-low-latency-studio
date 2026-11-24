@@ -1,0 +1,72 @@
+# AROMA LOW LATENCY STUDIO — build na nuvem (GitHub Actions).
+#
+# Compila o AromaStudio (JUCE 8, MSVC) no windows-latest e publica o EXE
+# como artefato e como release público (download sem login).
+# O JUCE vem via FetchContent (baixado do GitHub durante o build).
+# O EXE usa CRT estático: roda sem instalar o VC++ Redist.
+#
+# Disparo: push na main ou manual (Actions > Build Windows > Run workflow).
+# Release: v0.5.0 — AromaStudio-v0.5.0-windows.zip (EXE + kits + arte,
+# pronto para rodar) e AromaStudio.exe avulso.
+
+name: Build Windows
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Os ativos binários (samples WAV + arte do kit) viajam no repo em
+      # 5 partes base64 (tools/assets-bundle.tar.gz.b64.part-*), porque
+      # o upload pelo conector só aceita texto e um arquivo único de
+      # 3,4 MB não cabe num argumento de comando. Remonta os arquivos
+      # exatos que o Allex validou na v0.3.2.
+      - name: Restore binary assets
+        shell: pwsh
+        run: |
+          cmd /c copy /b tools\assets-bundle.tar.gz.b64.part-00+tools\assets-bundle.tar.gz.b64.part-01+tools\assets-bundle.tar.gz.b64.part-02+tools\assets-bundle.tar.gz.b64.part-03+tools\assets-bundle.tar.gz.b64.part-04 tools\assets-bundle.tar.gz.b64
+          certutil -decode tools/assets-bundle.tar.gz.b64 assets-bundle.tar.gz
+          tar -xzf assets-bundle.tar.gz
+          Remove-Item assets-bundle.tar.gz
+
+      - name: Configure (MSVC + JUCE via FetchContent)
+        run: cmake -S . -B build -DAROMA_BUILD_JUCE_APP=ON
+
+      - name: Build Release
+        run: cmake --build build --config Release
+
+      - name: Unit tests
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Stage deliverable
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item build/Release/AromaStudio.exe dist/
+          Copy-Item build/Release/AromaStandalone.exe dist/ -ErrorAction SilentlyContinue
+          Copy-Item build/Release/AromaDiagnostico.exe dist/ -ErrorAction SilentlyContinue
+          Copy-Item -Recurse kits dist/
+          Copy-Item -Recurse assets dist/
+          Compress-Archive -Path dist/* -DestinationPath AromaStudio-v0.5.0-windows.zip
+
+      - name: Upload AromaStudio
+        uses: actions/upload-artifact@v4
+        with:
+          name: AromaStudio-windows
+          path: dist/
+          if-no-files-found: error
+
+      - name: Publish release v0.5.0
+        shell: pwsh
+        run: |
+          gh release create v0.5.0 --title "v0.5.0 — AromaStudio (JUCE)" --notes "AromaStudio.exe compilado na nuvem (MSVC + JUCE 8). ZIP pronto para rodar: EXE + kits + arte do kit." AromaStudio-v0.5.0-windows.zip build/Release/AromaStudio.exe 2>$null
+          if ($LASTEXITCODE -ne 0) { gh release upload v0.5.0 AromaStudio-v0.5.0-windows.zip build/Release/AromaStudio.exe --clobber }
