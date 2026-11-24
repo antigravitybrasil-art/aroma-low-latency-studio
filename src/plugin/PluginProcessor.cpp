@@ -2,6 +2,33 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "../common/Kit.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+namespace {
+
+// O .vst3 é um pacote (bundle) e o host (Reaper) é outro EXE — nem
+// currentApplicationFile nem currentExecutableFile apontam para o
+// plugin. O caminho do próprio módulo (DLL) vem do handle do módulo
+// que contém um símbolo deste arquivo.
+juce::File pluginModuleFile() {
+#ifdef _WIN32
+    static int anchor = 0;
+    HMODULE h = nullptr;
+    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                               GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                           reinterpret_cast<LPCWSTR>(&anchor), &h) &&
+        h != nullptr) {
+        wchar_t path[MAX_PATH];
+        if (GetModuleFileNameW(h, path, MAX_PATH) > 0)
+            return juce::File(juce::String(path));
+    }
+#endif
+    return {};
+}
+
+} // namespace
 
 AromaProcessor::AromaProcessor()
     : AudioProcessor(BusesProperties()
@@ -10,25 +37,47 @@ AromaProcessor::AromaProcessor()
 AromaProcessor::~AromaProcessor() = default;
 
 void AromaProcessor::prepareToPlay(double sampleRate, int /*samplesPerBlock*/) {
-    // O kit demo é 48 kHz. Se o projeto do Reaper estiver noutra taxa,
-    // o ideal é um kit na mesma taxa (ou reamostragem — fora do escopo
-    // da Etapa 6 inicial; o diagnóstico define a taxa a usar).
-    juce::ignoreUnused(sampleRate);
-    if (!kitLoaded_) {
-        // O kit viaja junto ao plugin (pasta "kits/demo-kit" ao lado do .vst3).
-        // Caminho resolvido a partir do arquivo do plugin.
-        auto kitFile = juce::File::getSpecialLocation(
-                           juce::File::currentApplicationFile)
-                           .getParentDirectory()
-                           .getChildFile("kits")
-                           .getChildFile("demo-kit")
-                           .getChildFile("kit.txt");
-        aroma::Kit kit;
-        std::string error;
-        if (aroma::loadKit(kitFile.getFullPathName().toStdString(), kit, error)) {
+    hostSampleRate_ = sampleRate;
+    if (kitLoaded_) return;
+    // O kit demo viaja junto ao plugin: a pasta "kits" vai ao lado do
+    // pacote .vst3 (C:\Program Files\Common Files\VST3\kits\...). O DLL
+    // do plugin fica em <pacote>\Contents\x86_64-win\ — 3 níveis acima
+    // é o pacote, e ao lado dele fica a pasta "kits".
+    const juce::File module = pluginModuleFile();
+    std::vector<juce::File> candidates;
+    if (module.existsAsFile()) {
+        const juce::File bundleDir = module.getParentDirectory()
+                                         .getParentDirectory()
+                                         .getParentDirectory();
+        candidates.push_back(bundleDir.getParentDirectory()
+                                 .getChildFile("kits")
+                                 .getChildFile("demo-kit")
+                                 .getChildFile("kit.txt")); // ao lado do pacote
+        candidates.push_back(bundleDir.getChildFile("Contents")
+                                 .getChildFile("kits")
+                                 .getChildFile("demo-kit")
+                                 .getChildFile("kit.txt")); // dentro do pacote
+    }
+    candidates.push_back(juce::File::getSpecialLocation(
+                             juce::File::currentApplicationFile)
+                             .getParentDirectory()
+                             .getChildFile("kits")
+                             .getChildFile("demo-kit")
+                             .getChildFile("kit.txt"));
+    candidates.push_back(juce::File::getCurrentWorkingDirectory()
+                             .getChildFile("kits")
+                             .getChildFile("demo-kit")
+                             .getChildFile("kit.txt"));
+    aroma::Kit kit;
+    std::string error;
+    for (const auto& f : candidates) {
+        if (aroma::loadKit(f.getFullPathName().toStdString(), kit, error)) {
             kitLoaded_ = engine_.setKit(std::move(kit));
+            kitError_.clear();
+            return;
         }
     }
+    kitError_ = error.empty() ? "kit demo nao encontrado" : error;
 }
 
 void AromaProcessor::releaseResources() {
